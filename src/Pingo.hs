@@ -1,6 +1,7 @@
 module Pingo (
   parse,
-  output
+  output,
+  Color (..)
   ) where
 
 import Pingo.Parser

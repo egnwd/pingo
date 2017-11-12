@@ -7,6 +7,8 @@ import qualified Text.Parsec (parse)
 import Text.Parsec.String
 import Text.Parsec.Combinator
 
+import Options
+
 import Pingo.AST
 
 -- Parser Helpers

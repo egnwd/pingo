@@ -1,12 +1,22 @@
 {-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 {-# LANGUAGE ConstrainedClassMethods #-}
 
-module Pingo.Printer (output) where
+module Pingo.Printer (output, Color (..)) where
 
-import System.Console.ANSI
+import System.Console.ANSI hiding (Color)
 import Data.List
 
+import System.Posix.Terminal (queryTerminal)
+import System.Posix.IO (stdOutput)
+
 import Pingo.AST
+
+data Color = Auto | Always | Never deriving (Bounded, Enum, Eq)
+
+instance Show Color where
+  show Auto = "auto"
+  show Always = "always"
+  show Never = "never"
 
 class Colorable a where
   color :: a -> String
@@ -28,12 +38,20 @@ instance Colorable Atom where
     (setSGRCode [SetColor Foreground Vivid Green]) ++ name ++ (setSGRCode [Reset])
     ++ "(" ++ (concatMap color $ intersperse (Sep ", ") args) ++ ")"
 
+printer :: (Colorable a, Show a) => Color -> a -> IO ()
+printer c str = do
+  istty <- queryTerminal stdOutput
+  prettyLn (c == Always || (istty && c /= Never)) str
+
 -- Printers
-prettyLn :: (Colorable a, Show a) => a -> IO ()
-prettyLn = (>> putStrLn "") . (putStr "\t" >>) . pretty
+prettyLn :: (Colorable a, Show a) => Bool -> a -> IO ()
+prettyLn True = (>> putStrLn "") . (putStr "\t" >>) . pretty
+prettyLn False = (putStr "\t" >>) . print
 
 pretty :: (Colorable a, Show a) => a -> IO ()
 pretty = putStr . color
 
-output (n, a) = (putStrLn $ "Answer " ++ (show n) ++ ":") >> mapM_ prettyLn a
+answer n = "Answer " ++ (show n) ++ ":"
 
+output :: Color -> AnswerSet -> IO ()
+output c (n, a) = (putStrLn $ answer n) >> mapM_ (printer c) a
