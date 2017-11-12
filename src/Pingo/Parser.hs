@@ -37,10 +37,8 @@ atom = do
 
 answerSet :: Parser AnswerSet
 answerSet = do
-  n <- string "Answer: " *> (read <$> many1 digit) <* newline
-  atoms <- (atom <?> "a predicate or atom") `sepBy` (char ' ')
-
-  return (n, atoms)
+  string "Answer: " *> (many1 digit) <* newline
+  return =<< (atom <?> "a predicate or atom") `sepBy` (char ' ')
 
 answerSets :: Parser [AnswerSet]
 answerSets = (answerSet <?> "an answer set") `endBy` newline

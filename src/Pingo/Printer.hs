@@ -45,13 +45,10 @@ printer c str = do
 
 -- Printers
 prettyLn :: (Colorable a, Show a) => Bool -> a -> IO ()
-prettyLn True = (>> putStrLn "") . (putStr "\t" >>) . pretty
+prettyLn True = (>> putStrLn "") . (putStr "\t" >>) . (putStr . color)
 prettyLn False = (putStr "\t" >>) . print
-
-pretty :: (Colorable a, Show a) => a -> IO ()
-pretty = putStr . color
 
 answer n = "Answer " ++ (show n) ++ ":"
 
-output :: Color -> AnswerSet -> IO ()
+output :: Color -> (Int, AnswerSet) -> IO ()
 output c (n, a) = (putStrLn $ answer n) >> mapM_ (printer c) a

@@ -4,9 +4,9 @@ import Data.List
 
 type Ident = String
 type Number = Int
-type AnswerSet = (Int, [Atom])
 data Argument = Lit Atom | Num Number | Sep String
 data Atom = Atom Ident [Argument]
+type AnswerSet = [Atom]
 
 instance Show Atom where
   show (Atom name []) = name
