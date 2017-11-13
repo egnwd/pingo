@@ -30,7 +30,14 @@ ident = do
 
 -- | The 'literal' parser matches either an 'Atom' or a number
 literal :: Parser Argument
-literal = (Lit <$> atom) <|> (Num <$> read <$> many1 digit)
+literal = (Lit <$> atom) <|> (tuple) <|> (Num <$> read <$> many1 digit)
+
+-- | The 'tuple' parser matches a tuple of arguments
+tuple :: Parser Argument
+tuple = do
+  t <- between (char '(') (char ')') $ commaSep (literal <?> "a literal")
+
+  return $ Tuple t
 
 -- | The 'atom' parser parses an atom which is either an ident
 -- or a function with 'literal' arguments. Some examples are below:

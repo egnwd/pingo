@@ -4,7 +4,7 @@ import Data.List
 
 type Ident = String
 type Number = Int
-data Argument = Lit Atom | Num Number | Sep String
+data Argument = Lit Atom | Num Number | Tuple [Argument] | Sep String
 data Atom = Atom Ident [Argument]
 type AnswerSet = [Atom]
 
@@ -15,4 +15,5 @@ instance Show Atom where
 instance Show Argument where
   show (Lit atom) = show atom
   show (Num num) = show num
+  show (Tuple t) = "(" ++ (concatMap show $ intersperse (Sep ", ") t) ++ ")"
   show (Sep sep) = sep
