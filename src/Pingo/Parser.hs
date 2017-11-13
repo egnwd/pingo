@@ -6,6 +6,7 @@ import Text.Parsec hiding (uncons,parse)
 import qualified Text.Parsec (parse)
 import Text.Parsec.String
 import Text.Parsec.Combinator
+import Text.Parsec.Number
 
 import Options
 
@@ -30,7 +31,7 @@ ident = do
 
 -- | The 'literal' parser matches either an 'Atom' or a number
 literal :: Parser Argument
-literal = (Lit <$> atom) <|> (tuple) <|> (Num <$> read <$> many1 digit)
+literal = (Lit <$> atom) <|> (tuple) <|> (Num <$> (sign <*> decimal))
 
 -- | The 'tuple' parser matches a tuple of arguments
 tuple :: Parser Argument
