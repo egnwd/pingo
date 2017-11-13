@@ -2,6 +2,7 @@ module Main where
 
 import Control.Applicative
 import Options
+import System.IO
 
 import Pingo
 
@@ -22,6 +23,6 @@ main = runCommand $
     do
     input <- getContents
     case parse input of
-      Left err -> print err
+      Left err -> hPutStrLn stderr $ show err
       Right as -> mapM_ (output $ optColor opts) $ zip [1..] as
   )
