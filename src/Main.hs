@@ -18,11 +18,11 @@ instance Options MainOptions where
       })
 
 main :: IO ()
-main = runCommand $
+main = runCommand
   (\opts args ->
     do
     input <- getContents
     case parse input of
-      Left err -> hPutStrLn stderr $ show err
+      Left err -> hPrint stderr err
       Right as -> mapM_ (output $ optColor opts) $ zip [1..] as
   )

@@ -28,22 +28,22 @@ class Colorable a where
   color :: a -> String
 
 instance Colorable Ident where
-  color i = setSGRCode [SetColor Foreground Vivid Blue] ++ i ++ (setSGRCode [Reset])
+  color i = setSGRCode [SetColor Foreground Vivid Blue] ++ i ++ setSGRCode [Reset]
 
 instance Colorable Number where
-  color n = setSGRCode [SetColor Foreground Dull Yellow] ++ (show n) ++ (setSGRCode [Reset])
+  color n = setSGRCode [SetColor Foreground Dull Yellow] ++ show n ++ setSGRCode [Reset]
 
 instance Colorable Argument where
   color (Lit atom) = color atom
   color (Num n) = color n
-  color (Tuple t) = "(" ++ (concatMap color $ intersperse (Sep ", ") t) ++ ")"
+  color (Tuple t) = "(" ++ concatMap color (intersperse (Sep ", ") t) ++ ")"
   color (Sep s) = s
 
 instance Colorable Atom where
   color (Atom name []) = color name
   color (Atom name args) =
-    (setSGRCode [SetColor Foreground Vivid Green]) ++ name ++ (setSGRCode [Reset])
-    ++ "(" ++ (concatMap color $ intersperse (Sep ", ") args) ++ ")"
+    setSGRCode [SetColor Foreground Vivid Green] ++ name ++ setSGRCode [Reset]
+    ++ "(" ++ concatMap color (intersperse (Sep ", ") args) ++ ")"
 
 printer :: (Colorable a, Show a) => Color -> a -> IO ()
 printer c str = do
@@ -54,12 +54,12 @@ printer c str = do
 -- and either with or without color
 pretty :: (Colorable a, Show a) => Bool -> a -> IO ()
 pretty colored
-  | colored = (>> putStrLn "") . (putStr "\t" >>) . (putStr . color)
+  | colored = (>> putStrLn "") . (putStr "\t" >>) . putStr . color
   | otherwise = (putStr "\t" >>) . print
 
-answer n = "Answer " ++ (show n) ++ ":"
+answer n = "Answer " ++ show n ++ ":"
 
 
 -- | The 'output' function takes an ID-Answer Set tuple and prints it according to the 'Color' option
 output :: Color -> (Int, AnswerSet) -> IO ()
-output c (n, a) = (putStrLn $ answer n) >> mapM_ (printer c) a
+output c (n, a) = putStrLn (answer n) >> mapM_ (printer c) a

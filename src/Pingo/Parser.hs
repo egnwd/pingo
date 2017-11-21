@@ -31,7 +31,7 @@ ident = do
 
 -- | The 'literal' parser matches either an 'Atom' or a number
 literal :: Parser Argument
-literal = (Lit <$> atom) <|> (tuple) <|> (Num <$> (sign <*> decimal))
+literal = (Lit <$> atom) <|> tuple <|> (Num <$> (sign <*> decimal))
 
 -- | The 'tuple' parser matches a tuple of arguments
 tuple :: Parser Argument
@@ -55,8 +55,8 @@ atom = do
 -- | The 'answerSet' parser matches a list of 'Atom's
 answerSet :: Parser AnswerSet
 answerSet = do
-  string "Answer: " *> (many1 digit) <* newline
-  return =<< (atom <?> "a predicate or atom") `sepBy` (char ' ')
+  string "Answer: " *> many1 digit <* newline
+  (atom <?> "a predicate or atom") `sepBy` char ' '
 
 -- | The 'answerSets' parser collects a list of 'AnswerSet's
 answerSets :: Parser [AnswerSet]
@@ -65,9 +65,9 @@ answerSets = (answerSet <?> "an answer set") `endBy` newline
 -- | This 'file' parser removes metadata printed by clingo
 -- and returns the inner 'AnswerSet's
 file :: Parser [AnswerSet]
-file = skipLines 3 *> answerSets <* skipLines 6 <* eof
+file = manyTill anyChar (lookAhead $ try $ string "Answer: ") *> answerSets
 
 -- | The 'parse' function takes 'String' input
 -- and returns the 'AnswerSet's or a 'ParseError'
 parse :: String -> Either ParseError [AnswerSet]
-parse input = Text.Parsec.parse file "Pingo" input
+parse = Text.Parsec.parse file "Pingo"
