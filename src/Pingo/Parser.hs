@@ -16,16 +16,11 @@ import Pingo.AST
 -- for parsing comma separated lists, removing leading and trailing spaces
 commaSep = flip sepBy1 (spaces *> char ',' <* spaces)
 
--- | The 'skipLines' function ignores 'n' arbitrary lines of text
--- It takes 1 input 'n'
-skipLines :: Stream s m Char => Int -> ParsecT s u m [Char]
-skipLines n = count n $ (many $ noneOf "\n") *> newline
-
--- | The 'ident' parser matches text of the form @[a-z][a-zA-Z0-9_']*@
+-- | The 'ident' parser matches text of the form @[a-z\-][a-zA-Z0-9_']*@
 ident :: Parser Ident
 ident = do
-  c <- lower
-  s <- many $ alphaNum <|> (char '_') <|> (char '\'')
+  c <- lower <|> char '-'
+  s <- many $ alphaNum <|> char '_' <|> char '\''
 
   return $ c:s
 

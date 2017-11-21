@@ -1,5 +1,5 @@
 name:                pingo
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            Pretty Printer for Clingo
 homepage:            https://github.com/egnwd/pingo
 license:             MIT
