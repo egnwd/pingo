@@ -9,12 +9,15 @@ import Text.Parsec.Combinator
 import Text.Parsec.Number
 
 import Options
+import Data.Either
 
 import Pingo.AST
 
 -- | The 'commaSep' function is a convenience function
 -- for parsing comma separated lists, removing leading and trailing spaces
 commaSep = flip sepBy1 (spaces *> char ',' <* spaces)
+
+anyTill p = manyTill anyChar (lookAhead $ try p)
 
 -- | The 'ident' parser matches text of the form @[a-z\-][a-zA-Z0-9_']*@
 ident :: Parser Ident
@@ -60,7 +63,8 @@ answerSets = (answerSet <?> "an answer set") `endBy` newline
 -- | This 'file' parser removes metadata printed by clingo
 -- and returns the inner 'AnswerSet's
 file :: Parser [AnswerSet]
-file = manyTill anyChar (lookAhead $ try $ string "Answer: ") *> answerSets
+file = try (anyTill (string "Answer: "))  *> answerSets
+  <|> manyTill anyChar (lookAhead $ try (string "UNSATISFIABLE")) *> fail "No Answer Sets found"
 
 -- | The 'parse' function takes 'String' input
 -- and returns the 'AnswerSet's or a 'ParseError'

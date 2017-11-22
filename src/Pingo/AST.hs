@@ -10,10 +10,10 @@ type AnswerSet = [Atom]
 
 instance Show Atom where
   show (Atom name []) = name
-  show (Atom name args) = name ++ "(" ++ concatMap show (intersperse (Sep ", ") args) ++ ")"
+  show (Atom name args) = name ++ "(" ++ concatMap show (intersperse (Sep ",") args) ++ ")"
 
 instance Show Argument where
   show (Lit atom) = show atom
   show (Num num) = show num
-  show (Tuple t) = "(" ++ concatMap show (intersperse (Sep ", ") t) ++ ")"
+  show (Tuple t) = "(" ++ concatMap show (intersperse (Sep ",") t) ++ ")"
   show (Sep sep) = sep
