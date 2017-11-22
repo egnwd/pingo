@@ -4,3 +4,7 @@
 
 * First version. Released on an unsuspecting world.
 * Pretty prints clingo output
+
+## 0.2.0.0 -- 2017-11-22
+
+* Includes support for tuples, classical negation, and unsatisfiability.
