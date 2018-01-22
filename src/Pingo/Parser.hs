@@ -62,7 +62,7 @@ atom = do
 answerSet :: Parser AnswerSet
 answerSet = do
   string "Answer: " *> many1 digit <* newline
-  (atom <?> "a predicate or atom") `sepBy` char ' '
+  (atom <?> "a predicate or atom") `sepEndBy` char ' '
 
 -- | The 'answerSets' parser collects a list of 'AnswerSet's
 answerSets :: Parser [AnswerSet]
@@ -71,8 +71,8 @@ answerSets = (answerSet <?> "an answer set") `endBy` newline
 -- | This 'file' parser removes metadata printed by clingo
 -- and returns the inner 'AnswerSet's
 file :: Parser [AnswerSet]
-file = try (anyTill (string "Answer: "))  *> answerSets
-  <|> manyTill anyChar (lookAhead $ try (string "UNSATISFIABLE")) *> fail "No Answer Sets found"
+file = try (anyTill (string "Answer: ")) *> answerSets
+  <|> anyTill (string "UNSATISFIABLE") *> fail "No Answer Sets found"
 
 -- | The 'parse' function takes 'String' input
 -- and returns the 'AnswerSet's or a 'ParseError'
