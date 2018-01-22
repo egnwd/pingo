@@ -33,9 +33,13 @@ instance Colorable Ident where
 instance Colorable Number where
   color n = setSGRCode [SetColor Foreground Dull Yellow] ++ show n ++ setSGRCode [Reset]
 
+{- instance Colorable String where -}
+  {- color s = setSGRCode [SetColor Foreground Vivid Yellow] ++ show n ++ setSGRCode [Reset] -}
+
 instance Colorable Argument where
   color (Lit atom) = color atom
   color (Num n) = color n
+  color (Str s) = setSGRCode [SetColor Foreground Vivid Yellow] ++ show s ++ setSGRCode [Reset]
   color (Tuple t) = "(" ++ concatMap color (intersperse (Sep ", ") t) ++ ")"
   color (Sep s) = s
 

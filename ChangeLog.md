@@ -8,3 +8,7 @@
 ## 0.2.0.0 -- 2017-11-22
 
 * Includes support for tuples, classical negation, and unsatisfiability.
+
+## 0.3.0.0 -- 2018-01-20
+
+* Includes support for strings.

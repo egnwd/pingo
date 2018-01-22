@@ -19,6 +19,13 @@ commaSep = flip sepBy1 (spaces *> char ',' <* spaces)
 
 anyTill p = manyTill anyChar (lookAhead $ try p)
 
+parseString :: Parser String
+parseString = do
+    char '"'
+    strings <- many $ noneOf "\""
+    char '"'
+    return strings
+
 -- | The 'ident' parser matches text of the form @[a-z\-][a-zA-Z0-9_']*@
 ident :: Parser Ident
 ident = do
@@ -27,9 +34,10 @@ ident = do
 
   return $ c:s
 
--- | The 'literal' parser matches either an 'Atom' or a number
+-- | The 'literal' parser matches either an 'Atom' or a number or a quoted string
 literal :: Parser Argument
-literal = (Lit <$> atom) <|> tuple <|> (Num <$> (sign <*> decimal))
+literal = (Lit <$> atom) <|> tuple <|>
+  (Num <$> (sign <*> decimal)) <|> (Str <$> parseString)
 
 -- | The 'tuple' parser matches a tuple of arguments
 tuple :: Parser Argument

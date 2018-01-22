@@ -4,7 +4,7 @@ import Data.List
 
 type Ident = String
 type Number = Int
-data Argument = Lit Atom | Num Number | Tuple [Argument] | Sep String
+data Argument = Lit Atom | Num Number | Str String | Tuple [Argument] | Sep String
 data Atom = Atom Ident [Argument]
 type AnswerSet = [Atom]
 
