@@ -45,10 +45,12 @@ parens     = Token.parens     lexer -- parses surrounding ( )
 brackets   = Token.brackets   lexer -- parses surrounding [ ]
 braces     = Token.braces     lexer -- parses surrounding { }
 integer    = Token.integer    lexer -- parses an integer
+comma      = Token.comma      lexer -- parses a comma
 semi       = Token.semi       lexer -- parses a semicolon
-dot        = Token.dot        lexer -- parses a semicolon
+dot        = Token.dot        lexer -- parses a dot
 whiteSpace = Token.whiteSpace lexer -- parses whitespace
-rulecons   = whiteSpace >> Token.symbol lexer ":-"
+rulecons   = Token.symbol lexer ":-"
+wcons      = Token.symbol lexer ":~"
 commaSep   = Token.commaSep   lexer -- parses comma separated lists
 semiSep1   = Token.semiSep1   lexer -- parses semi separated lists
 
@@ -63,7 +65,10 @@ statements :: Parser [Statement]
 statements = many statement
 
 statement :: Parser Statement
-statement = try stmtFact <|> stmtConstraint <|> stmtRule
+statement = try (stmtFact <?> "fact")
+  <|> try (stmtConstraint <?> "contraint")
+  <|> try (stmtRule <?> "rule")
+  <|> (stmtWeak <?> "weak contraint")
 
 stmtConstraint :: Parser Statement
 stmtConstraint = rulecons *> (StmtConstraint <$> body) <* dot
@@ -82,36 +87,36 @@ stmtRule =
      dot
      return $ StmtRule h b
 
-{- stmtWeak = Parser Statement -}
-{- stmtWeak = -}
-  {- do wcons -}
-     {- b <- body -}
-     {- dot -}
-     {- brackets weightAtLevel -}
+stmtWeak :: Parser Statement
+stmtWeak =
+  do wcons
+     b <- body
+     dot
+     w <- brackets weightAtLevel <?> "weak constraint terms"
+     return $ StmtWeak b w
 
-{- weightAtLevel = Parser WeakTerms -}
-{- weightAtLevel = -}
-  {- do w <- number -}
-     {- char '@' -}
-     {- l <- optional number -}
-     {- ts <- optional (comma >> commaSep term) -}
-     {- return $ Weak w l ts -}
+weightAtLevel :: Parser WeakTerms
+weightAtLevel =
+  do w <- decimal <?> "weight"
+     l <- optionMaybe (char '@' *> decimal)
+     ts <- option [] (comma *> commaSep term)
+     return $ Weak w l ts
 
 headR :: Parser Literal
 headR = literal
 
 body :: Parser [NAFLiteral]
-body = whiteSpace >> commaSep nafLiteral
+body = whiteSpace *> commaSep nafLiteral
 
 literal :: Parser Literal
 literal =
-  (char '-' >> (NegLit <$> atom))
+  (char '-' *> (NegLit <$> atom))
   <|> (PosLit <$> atom)
 
 nafLiteral :: Parser NAFLiteral
 nafLiteral =
   try bExpression <|>
-  (reserved "not" >> (NegNAFLit <$> literal))
+  (reserved "not" *> (NegNAFLit <$> literal))
   <|> (PosNAFLit <$> literal)
 
 variable :: Parser Ident
@@ -186,7 +191,7 @@ bOperators
 
 -- | This 'file' parser returns the parsed 'Program'
 file :: Parser Program
-file = whiteSpace >> (Program <$> statements)
+file = whiteSpace *> (Program <$> statements) <* eof
 
 -- | The 'parse' function takes 'String' input
 -- and returns the 'Program' or a 'ParseError'

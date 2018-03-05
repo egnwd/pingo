@@ -30,3 +30,5 @@ goal(P1, 0) :- role(P1), role(P2), line(P2), P1 != P2.
 
 terminal :- line(_).
 terminal :- not open.
+
+:~ goal(W, 100).[1@2, 1]

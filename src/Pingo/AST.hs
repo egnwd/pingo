@@ -10,7 +10,12 @@ data Program = Program [Statement] deriving (Show)
 data Statement
   = StmtConstraint [NAFLiteral]
   | StmtRule Literal [NAFLiteral]
+  | StmtWeak [NAFLiteral] WeakTerms
   deriving (Show)
+
+type Weight = Int
+type Level = Int
+data WeakTerms = Weak Weight (Maybe Level) [Term] deriving (Show)
 
 data NAFLiteral
   = PosNAFLit Literal
