@@ -31,4 +31,8 @@ goal(P1, 0) :- role(P1), role(P2), line(P2), P1 != P2.
 terminal :- line(_).
 terminal :- not open.
 
+0 { does(P, A) : p(A) } 1 :- legal(P, A).
+:- role(P), not does(P, _), not terminal.
+:- does(P, A1), does(P, A2), A1 < A2.
+
 :~ goal(W, 100).[1@2, 1]

@@ -46,6 +46,7 @@ brackets   = Token.brackets   lexer -- parses surrounding [ ]
 braces     = Token.braces     lexer -- parses surrounding { }
 integer    = Token.integer    lexer -- parses an integer
 comma      = Token.comma      lexer -- parses a comma
+colon      = Token.colon      lexer -- parses a colon
 semi       = Token.semi       lexer -- parses a semicolon
 dot        = Token.dot        lexer -- parses a dot
 whiteSpace = Token.whiteSpace lexer -- parses whitespace
@@ -102,8 +103,8 @@ weightAtLevel =
      ts <- option [] (comma *> commaSep term)
      return $ Weak w l ts
 
-headR :: Parser Literal
-headR = literal
+headR :: Parser Head
+headR = Norm <$> literal <|> Choice <$> countAgg
 
 body :: Parser [NAFLiteral]
 body = whiteSpace *> commaSep nafLiteral
@@ -173,21 +174,24 @@ bOperators
   <|> (reservedOp ">=" >> return Gte)
   <|> (reservedOp "<=" >> return Lte)
 
-{- choice :: Parser Choice -}
-{- choice = -}
-  {- do l <- optional number -}
-     {- els <- braces choiceElements -}
-     {- u <- optional number -}
-     {- return $ Choice l els u -}
-  {- where -}
-    {- choiceElements :: Parser [ChoiceElement] -}
-    {- choiceElements = semiSep1 choiceElement -}
+countAgg :: Parser Aggregate
+countAgg =
+  do l <- optionMaybe decimal
+     whiteSpace
+     els <- braces choiceElements
+     whiteSpace
+     u <- optionMaybe decimal
+     whiteSpace
+     return $ Count l u els
+  where
+    choiceElements :: Parser [ChoiceElement]
+    choiceElements = semiSep1 choiceElement
 
-    {- choiceElement :: Parser ChoiceElement -}
-    {- choiceElement = -}
-      {- do l <- classicalLiteral -}
-         {- conds <- optional (colon >> many1 nafLiteral) -}
-         {- return $ ChoiceElement l conds -}
+    choiceElement :: Parser ChoiceElement
+    choiceElement =
+      do l <- literal
+         conds <- option [] (colon *> many1 nafLiteral)
+         return $ El l conds
 
 -- | This 'file' parser returns the parsed 'Program'
 file :: Parser Program

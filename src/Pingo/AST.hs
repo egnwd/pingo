@@ -9,7 +9,7 @@ data Program = Program [Statement] deriving (Show)
 
 data Statement
   = StmtConstraint [NAFLiteral]
-  | StmtRule Literal [NAFLiteral]
+  | StmtRule Head [NAFLiteral]
   | StmtWeak [NAFLiteral] WeakTerms
   deriving (Show)
 
@@ -24,6 +24,9 @@ data NAFLiteral
   deriving (Show)
 
 data Literal = PosLit Atom | NegLit Atom deriving (Show)
+data Head = Norm Literal | Choice Aggregate deriving (Show)
+data Aggregate = Count (Maybe Int) (Maybe Int) [ChoiceElement] deriving (Show)
+data ChoiceElement = El Literal [NAFLiteral] deriving (Show)
 data Atom = Atom Ident [Term] deriving (Show)
 data Term
   = Lit Atom
