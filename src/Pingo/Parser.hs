@@ -28,6 +28,8 @@ languageDef =
                                      , "#brave_ordering"
                                      , "#cautious_ordering"
                                      , "#deep_ordering"
+                                     , "#show"
+                                     , "#const"
                                      , "not"
                                      ]
            , Token.reservedOpNames = ["+" ,"-" ,"*" ,"/"
@@ -45,13 +47,14 @@ parens     = Token.parens     lexer -- parses surrounding ( )
 brackets   = Token.brackets   lexer -- parses surrounding [ ]
 braces     = Token.braces     lexer -- parses surrounding { }
 integer    = Token.integer    lexer -- parses an integer
+symbol     = Token.symbol     lexer
 comma      = Token.comma      lexer -- parses a comma
 colon      = Token.colon      lexer -- parses a colon
 semi       = Token.semi       lexer -- parses a semicolon
 dot        = Token.dot        lexer -- parses a dot
 whiteSpace = Token.whiteSpace lexer -- parses whitespace
-rulecons   = Token.symbol lexer ":-"
-wcons      = Token.symbol lexer ":~"
+rulecons   = symbol ":-"
+wcons      = symbol ":~"
 commaSep   = Token.commaSep   lexer -- parses comma separated lists
 semiSep1   = Token.semiSep1   lexer -- parses semi separated lists
 
@@ -70,6 +73,7 @@ statement = try (stmtFact <?> "fact")
   <|> try (stmtConstraint <?> "contraint")
   <|> try (stmtRule <?> "rule")
   <|> (stmtWeak <?> "weak contraint")
+  <|> (stmtASPFun <?> "ASP function")
 
 stmtConstraint :: Parser Statement
 stmtConstraint = rulecons *> (StmtConstraint <$> body) <* dot
@@ -95,6 +99,13 @@ stmtWeak =
      dot
      w <- brackets weightAtLevel <?> "weak constraint terms"
      return $ StmtWeak b w
+
+stmtASPFun :: Parser Statement
+stmtASPFun =
+  do f <- try (symbol "#const") <|> try (symbol "#show")
+     t <- term
+     dot
+     return $ StmtASPFun f t
 
 weightAtLevel :: Parser WeakTerms
 weightAtLevel =
@@ -131,11 +142,18 @@ variable = Token.lexeme lexer variable'
 
 term :: Parser Term
 term =
-  (Lit <$> atom) <|> Tuple <$> parens (commaSep term) <|> (Str <$> parseString)
-  <|> (const AnonVar <$> char '_') <|> try aExpression <|> subterm
+  Tuple <$> parens (commaSep term) <|> (Str <$> parseString)
+  <|> (const AnonVar <$> char '_') <|> try aExpression <|> try assign <|> subterm
+
+assign :: Parser Term
+assign =
+  do l <- subterm
+     whiteSpace *> symbol "=" <* whiteSpace
+     r <- subterm
+     return $ Assign l r
 
 subterm :: Parser Term
-subterm = (Var <$> variable) <|> (Num <$> (sign <*> decimal))
+subterm = (Var <$> variable) <|> (Num <$> (sign <*> decimal)) <|> (Lit <$> atom)
 
 atom :: Parser Atom
 atom = do

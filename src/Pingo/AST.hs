@@ -11,6 +11,7 @@ data Statement
   = StmtConstraint [NAFLiteral]
   | StmtRule Head [NAFLiteral]
   | StmtWeak [NAFLiteral] WeakTerms
+  | StmtASPFun Ident Term
   deriving (Show)
 
 type Weight = Int
@@ -37,6 +38,7 @@ data Term
   | Tuple [Term]
   | Sep String
   | ABin AOp Term Term
+  | Assign Term Term
   deriving (Show)
 
 data BOp = Eq

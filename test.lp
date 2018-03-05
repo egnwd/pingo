@@ -1,3 +1,5 @@
+#const a = 1.
+
 % Background
 role(x).
 role(o).
@@ -36,3 +38,5 @@ terminal :- not open.
 :- does(P, A1), does(P, A2), A1 < A2.
 
 :~ goal(W, 100).[1@2, 1]
+
+#show line/1.
