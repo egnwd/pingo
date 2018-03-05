@@ -1,5 +1,5 @@
 name:                pingo
-version:             0.3.0.0
+version:             0.4.0.0
 synopsis:            Pretty Printer for Clingo
 homepage:            https://github.com/egnwd/pingo
 license:             MIT
@@ -12,9 +12,14 @@ extra-source-files:  ChangeLog.md
 cabal-version:       >=1.10
 
 library
-  exposed-modules: Pingo.AST
+  exposed-modules:
+    Pingo.AST,
+    Pingo.Parser
   build-depends:
-    base >=4.8 && <4.10
+    base >=4.8 && <4.10,
+    parsec >= 3.1 && < 3.2,
+    parsec3-numbers == 0.1.0,
+    ansi-terminal >= 0.7 && <1.0
   hs-source-dirs:      src
   default-language:    Haskell2010
 

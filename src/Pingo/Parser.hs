@@ -7,17 +7,50 @@ import qualified Text.Parsec (parse)
 import Text.Parsec.String
 import Text.Parsec.Combinator
 import Text.Parsec.Number
+import Text.ParserCombinators.Parsec.Expr
+import Text.ParserCombinators.Parsec.Language
+import qualified Text.ParserCombinators.Parsec.Token as Token
 
-import Options
 import Data.Either
+import Data.Maybe
 
 import Pingo.AST
 
--- | The 'commaSep' function is a convenience function
--- for parsing comma separated lists, removing leading and trailing spaces
-commaSep = flip sepBy1 (spaces *> char ',' <* spaces)
+languageDef =
+  emptyDef { Token.commentStart    = "%*"
+           , Token.commentEnd      = "*%"
+           , Token.commentLine     = "%"
+           , Token.identStart      = lower
+           , Token.identLetter     = alphaNum
+           , Token.reservedNames   = [ "#child"
+                                     , "#pos"
+                                     , "#neg"
+                                     , "#brave_ordering"
+                                     , "#cautious_ordering"
+                                     , "#deep_ordering"
+                                     , "not"
+                                     ]
+           , Token.reservedOpNames = ["+" ,"-" ,"*" ,"/"
+                                     ,"==" ,"!="
+                                     ,"<" ,">"
+                                     ,">=" ,"<="
+                                     ]
+           }
 
-anyTill p = manyTill anyChar (lookAhead $ try p)
+lexer = Token.makeTokenParser languageDef
+identifier = Token.identifier lexer -- parses an identifier
+reserved   = Token.reserved   lexer -- parses a reserved name
+reservedOp = Token.reservedOp lexer -- parses an operator
+parens     = Token.parens     lexer -- parses surrounding ( )
+brackets   = Token.brackets   lexer -- parses surrounding [ ]
+braces     = Token.braces     lexer -- parses surrounding { }
+integer    = Token.integer    lexer -- parses an integer
+semi       = Token.semi       lexer -- parses a semicolon
+dot        = Token.dot        lexer -- parses a semicolon
+whiteSpace = Token.whiteSpace lexer -- parses whitespace
+rulecons   = whiteSpace >> Token.symbol lexer ":-"
+commaSep   = Token.commaSep   lexer -- parses comma separated lists
+semiSep1   = Token.semiSep1   lexer -- parses semi separated lists
 
 parseString :: Parser String
 parseString = do
@@ -26,55 +59,141 @@ parseString = do
     char '"'
     return strings
 
--- | The 'ident' parser matches text of the form @[a-z\-][a-zA-Z0-9_']*@
-ident :: Parser Ident
-ident = do
-  c <- lower <|> char '-'
-  s <- many $ alphaNum <|> char '_' <|> char '\''
+statements :: Parser [Statement]
+statements = many statement
 
-  return $ c:s
+statement :: Parser Statement
+statement = try stmtFact <|> stmtConstraint <|> stmtRule
 
--- | The 'literal' parser matches either an 'Atom' or a number or a quoted string
-literal :: Parser Argument
-literal = (Lit <$> atom) <|> tuple <|>
-  (Num <$> (sign <*> decimal)) <|> (Str <$> parseString)
+stmtConstraint :: Parser Statement
+stmtConstraint = rulecons *> (StmtConstraint <$> body) <* dot
 
--- | The 'tuple' parser matches a tuple of arguments
-tuple :: Parser Argument
-tuple = do
-  t <- between (char '(') (char ')') $ commaSep (literal <?> "a literal")
+stmtFact :: Parser Statement
+stmtFact =
+  do h <- headR
+     dot
+     return $ StmtRule h []
 
-  return $ Tuple t
+stmtRule :: Parser Statement
+stmtRule =
+  do h <- headR
+     rulecons
+     b <- body
+     dot
+     return $ StmtRule h b
 
--- | The 'atom' parser parses an atom which is either an ident
--- or a function with 'literal' arguments. Some examples are below:
---     * q
---     * p(q, r)
---     * p(s(t), r)
+{- stmtWeak = Parser Statement -}
+{- stmtWeak = -}
+  {- do wcons -}
+     {- b <- body -}
+     {- dot -}
+     {- brackets weightAtLevel -}
+
+{- weightAtLevel = Parser WeakTerms -}
+{- weightAtLevel = -}
+  {- do w <- number -}
+     {- char '@' -}
+     {- l <- optional number -}
+     {- ts <- optional (comma >> commaSep term) -}
+     {- return $ Weak w l ts -}
+
+headR :: Parser Literal
+headR = literal
+
+body :: Parser [NAFLiteral]
+body = whiteSpace >> commaSep nafLiteral
+
+literal :: Parser Literal
+literal =
+  (char '-' >> (NegLit <$> atom))
+  <|> (PosLit <$> atom)
+
+nafLiteral :: Parser NAFLiteral
+nafLiteral =
+  try bExpression <|>
+  (reserved "not" >> (NegNAFLit <$> literal))
+  <|> (PosNAFLit <$> literal)
+
+variable :: Parser Ident
+variable = Token.lexeme lexer variable'
+  where
+    variable' :: Parser Ident
+    variable' =
+      do c <- upper
+         s <- many $ alphaNum <|> char '_' <|> char '\''
+         return $ c:s
+
+term :: Parser Term
+term =
+  (Lit <$> atom) <|> Tuple <$> parens (commaSep term) <|> (Str <$> parseString)
+  <|> (const AnonVar <$> char '_') <|> try aExpression <|> subterm
+
+subterm :: Parser Term
+subterm = (Var <$> variable) <|> (Num <$> (sign <*> decimal))
+
 atom :: Parser Atom
 atom = do
-  name <- ident
-  args <- option [] (between (char '(') (char ')') $ commaSep (literal <?> "a literal"))
+  name <- identifier
+  args <- option [] $ parens (commaSep term)
 
   return $ Atom name args
 
--- | The 'answerSet' parser matches a list of 'Atom's
-answerSet :: Parser AnswerSet
-answerSet = do
-  string "Answer: " *> many1 digit <* newline
-  (atom <?> "a predicate or atom") `sepEndBy` char ' '
+aExpression :: Parser Term
+aExpression =
+  do a1 <- subterm
+     op <- aOperators
+     a2 <- subterm
+     return $ ABin op a1 a2
 
--- | The 'answerSets' parser collects a list of 'AnswerSet's
-answerSets :: Parser [AnswerSet]
-answerSets = (answerSet <?> "an answer set") `endBy` newline
+bExpression :: Parser NAFLiteral
+bExpression =
+  do a1 <- term
+     op <- bOperators
+     a2 <- term
+     return $ BBin op a1 a2
 
--- | This 'file' parser removes metadata printed by clingo
--- and returns the inner 'AnswerSet's
-file :: Parser [AnswerSet]
-file = try (anyTill (string "Answer: ")) *> answerSets
-  <|> anyTill (string "UNSATISFIABLE") *> fail "No Answer Sets found"
+aOperators :: Parser AOp
+aOperators
+  =   (reservedOp "*" >> return Multiply)
+  <|> (reservedOp "/" >> return Divide  )
+  <|> (reservedOp "+" >> return Add     )
+  <|> (reservedOp "-" >> return Subtract)
+
+bOperators :: Parser BOp
+bOperators
+  =   (reservedOp "==" >> return Eq )
+  <|> (reservedOp "!=" >> return Neq)
+  <|> (reservedOp ">"  >> return Gt )
+  <|> (reservedOp "<"  >> return Lt )
+  <|> (reservedOp ">=" >> return Gte)
+  <|> (reservedOp "<=" >> return Lte)
+
+{- choice :: Parser Choice -}
+{- choice = -}
+  {- do l <- optional number -}
+     {- els <- braces choiceElements -}
+     {- u <- optional number -}
+     {- return $ Choice l els u -}
+  {- where -}
+    {- choiceElements :: Parser [ChoiceElement] -}
+    {- choiceElements = semiSep1 choiceElement -}
+
+    {- choiceElement :: Parser ChoiceElement -}
+    {- choiceElement = -}
+      {- do l <- classicalLiteral -}
+         {- conds <- optional (colon >> many1 nafLiteral) -}
+         {- return $ ChoiceElement l conds -}
+
+-- | This 'file' parser returns the parsed 'Program'
+file :: Parser Program
+file = whiteSpace >> (Program <$> statements)
 
 -- | The 'parse' function takes 'String' input
--- and returns the 'AnswerSet's or a 'ParseError'
-parse :: String -> Either ParseError [AnswerSet]
+-- and returns the 'Program' or a 'ParseError'
+parse :: String -> Either ParseError Program
 parse = Text.Parsec.parse file "Pingo"
+
+parseFile :: String -> IO (Either ParseError Program)
+parseFile file =
+  do contents <- readFile file
+     return $ parse contents
