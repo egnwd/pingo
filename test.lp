@@ -40,3 +40,67 @@ terminal :- not open.
 :~ goal(W, 100).[1@2, 1]
 
 #show line/1.
+
+#pos(ex_2_4_3,
+  {}, {},
+  {
+    does(x, mark(2,3)).
+    init(cell(1,1,x)).
+    init(cell(1,2,x)).
+    init(cell(1,3,b)).
+    init(cell(2,1,o)).
+    init(cell(2,2,b)).
+    init(cell(2,3,b)).
+    init(cell(3,1,x)).
+    init(cell(3,2,o)).
+    init(cell(3,3,o)).
+    init(control(x)).
+  }
+).
+
+#neg(ex_bad_1,
+  {
+    does(x, noop)
+  }, {},
+  {
+    init(cell(1,1,x)).
+    init(cell(1,2,b)).
+    init(cell(1,3,b)).
+    init(cell(2,1,o)).
+    init(cell(2,2,b)).
+    init(cell(2,3,b)).
+    init(cell(3,1,x)).
+    init(cell(3,2,o)).
+    init(cell(3,3,b)).
+    init(control(x)).
+  }
+).
+
+#brave_ordering(ord_4_3,ex_1_4_2,ex_2_2_3).
+
+#deep_ordering(d_ord_1, ex_1, ex_2, 3).
+
+#child(ex_1, ex_1_1).
+
+#modeh(legal(var(p), mark(var(row), var(column)))).
+#modeh(legal(var(p), noop)).
+#modeb(1, init(cell(var(row), var(column), const(state)))).
+#modeb(1, init(control(var(p)))).
+#modeb(terminal).
+#modeb(1, role(var(p))).
+
+#modeo(1, goal(const(role), const(reward)), (positive)).
+#constant(role, x).
+% #constant(role, o).
+% #constant(state, x).
+% #constant(state, o).
+% #constant(state, b).
+#constant(reward, 100).
+% #constant(reward, 50).
+% #constant(reward, 0).
+#weight(-1).
+% #weight(1).
+
+#maxp(1).
+
+#maxv(4).

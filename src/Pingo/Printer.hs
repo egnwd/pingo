@@ -36,12 +36,13 @@ instance Colorable Number where
 {- instance Colorable String where -}
   {- color s = setSGRCode [SetColor Foreground Vivid Yellow] ++ show n ++ setSGRCode [Reset] -}
 
-instance Colorable Argument where
+instance Colorable Term where
   color (Lit atom) = color atom
   color (Num n) = color n
   color (Str s) = setSGRCode [SetColor Foreground Vivid Yellow] ++ show s ++ setSGRCode [Reset]
   color (Tuple t) = "(" ++ concatMap color (intersperse (Sep ", ") t) ++ ")"
   color (Sep s) = s
+  color x = show x
 
 instance Colorable Atom where
   color (Atom name []) = color name
@@ -65,5 +66,5 @@ answer n = "Answer " ++ show n ++ ":"
 
 
 -- | The 'output' function takes an ID-Answer Set tuple and prints it according to the 'Color' option
-output :: Color -> (Int, AnswerSet) -> IO ()
+output :: Color -> (Int, [Atom]) -> IO ()
 output c (n, a) = putStrLn (answer n) >> mapM_ (printer c) a

@@ -35,12 +35,12 @@ The printing can be colored or plain.
 module Pingo (
   parse,
   Atom,
-  AnswerSet,
-  Argument,
+  Term,
   Ident,
   Number,
   output,
   printer,
+  clingoOut,
   Color (..)
   ) where
 

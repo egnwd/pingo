@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RankNTypes #-}
 
 module Pingo.Parser where
 
@@ -6,7 +7,7 @@ import Text.Parsec hiding (uncons,parse)
 import qualified Text.Parsec (parse)
 import Text.Parsec.String
 import Text.Parsec.Combinator
-import Text.Parsec.Number
+import Text.Parsec.Number (sign, decimal)
 import Text.ParserCombinators.Parsec.Expr
 import Text.ParserCombinators.Parsec.Language
 import qualified Text.ParserCombinators.Parsec.Token as Token
@@ -21,7 +22,7 @@ languageDef =
            , Token.commentEnd      = "*%"
            , Token.commentLine     = "%"
            , Token.identStart      = lower
-           , Token.identLetter     = alphaNum
+           , Token.identLetter     = alphaNum <|> char '_'
            , Token.reservedNames   = [ "#child"
                                      , "#pos"
                                      , "#neg"
@@ -33,7 +34,7 @@ languageDef =
                                      , "not"
                                      ]
            , Token.reservedOpNames = ["+" ,"-" ,"*" ,"/"
-                                     ,"==" ,"!="
+                                     ,"==" ,"!=", "="
                                      ,"<" ,">"
                                      ,">=" ,"<="
                                      ]
@@ -53,10 +54,15 @@ colon      = Token.colon      lexer -- parses a colon
 semi       = Token.semi       lexer -- parses a semicolon
 dot        = Token.dot        lexer -- parses a dot
 whiteSpace = Token.whiteSpace lexer -- parses whitespace
+variable   = Token.lexeme     lexer variable' -- parses variable
 rulecons   = symbol ":-"
 wcons      = symbol ":~"
 commaSep   = Token.commaSep   lexer -- parses comma separated lists
 semiSep1   = Token.semiSep1   lexer -- parses semi separated lists
+
+anyTill p = manyTill anyChar (lookAhead $ try p)
+
+setOf p = braces (commaSep p)
 
 parseString :: Parser String
 parseString = do
@@ -73,46 +79,34 @@ statement = try (stmtFact <?> "fact")
   <|> try (stmtConstraint <?> "contraint")
   <|> try (stmtRule <?> "rule")
   <|> (stmtWeak <?> "weak contraint")
-  <|> (stmtASPFun <?> "ASP function")
+  <|> try (stmtASPFun <?> "ASP function")
+  <|> (StmtILASPFun <$> stmtILASPFun <?> "ILASP function")
 
 stmtConstraint :: Parser Statement
 stmtConstraint = rulecons *> (StmtConstraint <$> body) <* dot
 
 stmtFact :: Parser Statement
-stmtFact =
-  do h <- headR
-     dot
-     return $ StmtRule h []
+stmtFact = flip StmtRule [] <$> (headR <* dot)
 
 stmtRule :: Parser Statement
-stmtRule =
-  do h <- headR
-     rulecons
-     b <- body
-     dot
-     return $ StmtRule h b
+stmtRule = StmtRule <$> headR <* rulecons <*> body <* dot
 
 stmtWeak :: Parser Statement
-stmtWeak =
-  do wcons
-     b <- body
-     dot
-     w <- brackets weightAtLevel <?> "weak constraint terms"
-     return $ StmtWeak b w
+stmtWeak = wcons *> (StmtWeak <$> body <* dot <*> wts)
+  where wts = brackets weightAtLevel <?> "weak constraint terms"
 
 stmtASPFun :: Parser Statement
-stmtASPFun =
-  do f <- try (symbol "#const") <|> try (symbol "#show")
-     t <- term
-     dot
-     return $ StmtASPFun f t
+stmtASPFun = StmtASPFun <$> f <* whiteSpace <*> term <* dot
+  where
+    f = choice $ map (try . (<* char ' ') . string) aspFuns
+    aspFuns = ["#const", "#show"]
 
 weightAtLevel :: Parser WeakTerms
-weightAtLevel =
-  do w <- decimal <?> "weight"
-     l <- optionMaybe (char '@' *> decimal)
-     ts <- option [] (comma *> commaSep term)
-     return $ Weak w l ts
+weightAtLevel = Weak <$> weight <*> level <*> ts
+  where
+    weight = decimal <?> "weight"
+    level = optionMaybe (char '@' *> decimal)
+    ts = option [] (comma *> commaSep term)
 
 headR :: Parser Head
 headR = Norm <$> literal <|> Choice <$> countAgg
@@ -122,59 +116,33 @@ body = whiteSpace *> commaSep nafLiteral
 
 literal :: Parser Literal
 literal =
-  (char '-' *> (NegLit <$> atom))
-  <|> (PosLit <$> atom)
+  ((char '-' *> (NegLit <$> atom))
+  <|> (PosLit <$> atom)) <?> "literal"
 
 nafLiteral :: Parser NAFLiteral
 nafLiteral =
-  try bExpression <|>
+  try (bExpression <?> "binary expression") <|>
   (reserved "not" *> (NegNAFLit <$> literal))
   <|> (PosNAFLit <$> literal)
 
-variable :: Parser Ident
-variable = Token.lexeme lexer variable'
-  where
-    variable' :: Parser Ident
-    variable' =
-      do c <- upper
-         s <- many $ alphaNum <|> char '_' <|> char '\''
-         return $ c:s
+variable' :: Parser Ident
+variable' = (:) <$> upper <*> many (alphaNum <|> char '_' <|> char '\'')
 
 term :: Parser Term
-term =
-  Tuple <$> parens (commaSep term) <|> (Str <$> parseString)
-  <|> (const AnonVar <$> char '_') <|> try aExpression <|> try assign <|> subterm
+term = (tuple <|> str <|> anonvar <|> try aExpression <|> assign <|> subterm) <?> "term"
 
-assign :: Parser Term
-assign =
-  do l <- subterm
-     whiteSpace *> symbol "=" <* whiteSpace
-     r <- subterm
-     return $ Assign l r
-
-subterm :: Parser Term
+tuple = Tuple <$> parens (commaSep term)
+str = Str <$> parseString
+anonvar = char '_' >> return AnonVar
+assign = Assign <$> try (subterm <* reservedOp "=") <*> subterm
 subterm = (Var <$> variable) <|> (Num <$> (sign <*> decimal)) <|> (Lit <$> atom)
-
-atom :: Parser Atom
-atom = do
-  name <- identifier
-  args <- option [] $ parens (commaSep term)
-
-  return $ Atom name args
+atom = Atom <$> identifier <*> option [] (parens (commaSep term))
 
 aExpression :: Parser Term
-aExpression =
-  do a1 <- subterm
-     op <- aOperators
-     a2 <- subterm
-     return $ ABin op a1 a2
+aExpression = ABin <$> subterm <*> aOperators <*> subterm
 
 bExpression :: Parser NAFLiteral
-bExpression =
-  do a1 <- term
-     op <- bOperators
-     a2 <- term
-     return $ BBin op a1 a2
+bExpression = BBin <$> term <*> bOperators <*> term
 
 aOperators :: Parser AOp
 aOperators
@@ -193,34 +161,109 @@ bOperators
   <|> (reservedOp "<=" >> return Lte)
 
 countAgg :: Parser Aggregate
-countAgg =
-  do l <- optionMaybe decimal
-     whiteSpace
-     els <- braces choiceElements
-     whiteSpace
-     u <- optionMaybe decimal
-     whiteSpace
-     return $ Count l u els
+countAgg = Count <$> bound <*> (braces choiceElements <* whiteSpace) <*> bound
   where
+    bound = optionMaybe decimal <* whiteSpace
+
     choiceElements :: Parser [ChoiceElement]
     choiceElements = semiSep1 choiceElement
 
     choiceElement :: Parser ChoiceElement
-    choiceElement =
-      do l <- literal
-         conds <- option [] (colon *> many1 nafLiteral)
-         return $ El l conds
+    choiceElement = El <$> literal <*> option [] (colon *> many1 nafLiteral)
+
+
+-- ILASP
+
+stmtILASPFun :: Parser ILASPFun
+stmtILASPFun = example <|> ordering <|> child <|> modeDeclaration
+
+example :: Parser ILASPFun
+example = Example <$> (negex <|> posex)
+  where
+    negex =
+      do try (reserved "#neg")
+         (id, _, _, _) <- parens innerex
+         dot
+         return $ NegEx id
+    posex =
+      do try (reserved "#pos")
+         (id, _, _, _) <- parens innerex
+         dot
+         return $ PosEx id
+    innerex =
+      do id <- option "" (identifier <* comma)
+         optional newline
+         whiteSpace *> braces (many $ noneOf "}")
+         whiteSpace *> comma <* whiteSpace
+         braces (many $ noneOf "}")
+         optional (comma *> braces (many $ noneOf "}"))
+         return (id, [], [], [])
+
+ordering :: Parser ILASPFun
+ordering = Ordering <$> (brave <|> cautious <|> deep)
+  where
+    brave =
+      do try (reserved "#brave_ordering")
+         (id, ex1, ex2) <- parens innerord
+         dot
+         return $ Brave id ex1 ex2
+    cautious =
+      do try (reserved "#cautious_ordering")
+         (id, ex1, ex2) <- parens innerord
+         dot
+         return $ Cautious id ex1 ex2
+    deep =
+      do try (reserved "#deep_ordering")
+         (id, ex1, ex2, d) <- parens innerordDeep
+         dot
+         return $ Deep id ex1 ex2 d
+    innerord =
+      do id <- identifier <* comma
+         ex1 <- identifier
+         ex2 <- option "" (comma *> identifier)
+         return $ if ex2 == "" then (ex2, id, ex1) else (id, ex1, ex2)
+    innerordDeep =
+      do (id, ex1, ex2) <- innerord
+         d <- comma *> decimal
+         return (id, ex1, ex2, d)
+
+child :: Parser ILASPFun
+child =
+  do try (reserved "#child")
+     (p, c) <- parens ((,) <$> (identifier <* comma) <*> identifier)
+     dot
+     return $ Child p c
+
+modeDeclaration :: Parser ILASPFun
+modeDeclaration = Mode <$> choice (map (try . string) modeDecFuns) <*> parens (commaSep term) <* dot
+  where
+    modeDecFuns = ["#modeh", "#modeha", "#modeb", "#modeo", "#constant", "#maxp", "#maxv", "#weight"]
 
 -- | This 'file' parser returns the parsed 'Program'
 file :: Parser Program
 file = whiteSpace *> (Program <$> statements) <* eof
 
+-- | The 'answerSet' parser matches a list of 'Atom's
+answerSet :: Parser [Atom]
+answerSet = do
+  string "Answer: " *> decimal <* newline
+  many1 (atom <?> "a predicate or atom")
+
+-- | The 'answerSets' parser collects a list of 'AnswerSet's
+answerSets :: Parser [[Atom]]
+answerSets = many1 (answerSet <?> "an answer set")
+
+-- | This 'file' parser returns the parsed 'Program'
+clingoOut :: Parser [[Atom]]
+clingoOut = try (anyTill (string "Answer: ")) *> answerSets
+  <|> anyTill (string "UNSATISFIABLE") *> fail "No Answer Sets found"
+
 -- | The 'parse' function takes 'String' input
 -- and returns the 'Program' or a 'ParseError'
-parse :: String -> Either ParseError Program
-parse = Text.Parsec.parse file "Pingo"
+parse :: forall a . Parser a -> String -> Either ParseError a
+parse f = Text.Parsec.parse f "Pingo"
 
 parseFile :: String -> IO (Either ParseError Program)
-parseFile file =
-  do contents <- readFile file
-     return $ parse contents
+parseFile f =
+  do contents <- readFile f
+     return $ parse file contents
