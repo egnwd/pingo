@@ -58,7 +58,6 @@ variable   = Token.lexeme     lexer variable' -- parses variable
 rulecons   = symbol ":-"
 wcons      = symbol ":~"
 commaSep   = Token.commaSep   lexer -- parses comma separated lists
-dotSep p   = sepBy p dot            -- parses comma separated lists
 semiSep1   = Token.semiSep1   lexer -- parses semi separated lists
 
 anyTill p = manyTill anyChar (lookAhead $ try p)
@@ -194,9 +193,9 @@ example = Example <$> (negex <|> posex)
     innerex =
       do id <- option "" (identifier <* comma)
          optional newline <* whiteSpace
-         inc <- braces (dotSep atom)
+         inc <- setOf atom
          whiteSpace *> comma <* whiteSpace
-         exc <- braces (dotSep atom)
+         exc <- setOf atom
          ctx <- option [] (comma *> braces statements)
          return (id, inc, exc, ctx)
 
