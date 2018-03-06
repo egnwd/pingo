@@ -58,6 +58,7 @@ variable   = Token.lexeme     lexer variable' -- parses variable
 rulecons   = symbol ":-"
 wcons      = symbol ":~"
 commaSep   = Token.commaSep   lexer -- parses comma separated lists
+dotSep p   = sepBy p dot            -- parses comma separated lists
 semiSep1   = Token.semiSep1   lexer -- parses semi separated lists
 
 anyTill p = manyTill anyChar (lookAhead $ try p)
@@ -182,22 +183,22 @@ example = Example <$> (negex <|> posex)
   where
     negex =
       do try (reserved "#neg")
-         (id, _, _, _) <- parens innerex
+         (id, inc, exc, ctx) <- parens innerex
          dot
-         return $ NegEx id
+         return $ NegEx id inc exc ctx
     posex =
       do try (reserved "#pos")
-         (id, _, _, _) <- parens innerex
+         (id, inc, exc, ctx) <- parens innerex
          dot
-         return $ PosEx id
+         return $ PosEx id inc exc ctx
     innerex =
       do id <- option "" (identifier <* comma)
-         optional newline
-         whiteSpace *> braces (many $ noneOf "}")
+         optional newline <* whiteSpace
+         inc <- braces (dotSep atom)
          whiteSpace *> comma <* whiteSpace
-         braces (many $ noneOf "}")
-         optional (comma *> braces (many $ noneOf "}"))
-         return (id, [], [], [])
+         exc <- braces (dotSep atom)
+         ctx <- option [] (comma *> braces statements)
+         return (id, inc, exc, ctx)
 
 ordering :: Parser ILASPFun
 ordering = Ordering <$> (brave <|> cautious <|> deep)

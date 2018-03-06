@@ -23,7 +23,10 @@ data ILASPFun
   | Mode Ident [Term]
   deriving (Eq)
 
-data Example = PosEx String | NegEx String deriving (Eq)
+data Example
+  = PosEx String [Atom] [Atom] [Statement]
+  | NegEx String [Atom] [Atom] [Statement]
+  deriving (Eq)
 data OrderingExample
   = Brave String String String
   | Cautious String String String
@@ -146,8 +149,13 @@ instance Show ILASPFun where
   show (Mode id ts) = id ++ "(" ++ concatMap show (intersperse (Sep ",") ts) ++ ")."
 
 instance Show Example where
-  show (PosEx id) = "#pos(" ++ blankId id ++ "{}, {})."
-  show (NegEx id) = "#neg(" ++ blankId id ++ "{}, {})."
+  show (PosEx id inc exc ctx) = "#pos(" ++ showInnerEx id inc exc ctx ++ ")."
+  show (NegEx id inc exc ctx) = "#neg(" ++ showInnerEx id inc exc ctx ++ ")."
+
+showInnerEx id inc exc ctx = blankId id ++ incOrExc inc ++ ", " ++ incOrExc exc ++ maybeCtx ctx
+incOrExc set = "{" ++ intercalate ", " (map show set) ++ "}"
+maybeCtx [] = ""
+maybeCtx ctx = ", {\n" ++ show (Program ctx) ++ "\n}"
 
 blankId ""  = ""
 blankId id = id ++ ", "
