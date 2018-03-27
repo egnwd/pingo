@@ -25,6 +25,9 @@ The interesting information is all on one line,
 Pingo extracts this information and pretty prints it.
 The printing can be colored or plain.
 
+Pingo can also parse and output clingo files,
+if you wish to do any preprocessing of your logic programs.
+
 ## CLI
 
 Usage:
@@ -40,3 +43,16 @@ run: `cabal install`
 
 run `cabal haddock`
 
+
+## Library
+
+There is also a library that parses [ASP Core 2](https://www.mat.unical.it/aspcomp2013/files/ASP-CORE-2.03b.pdf) syntax,
+as well as [ILASP](https://www.doc.ic.ac.uk/~ml1909/ILASP) syntax for learning tasks.
+
+NOTE: There are a few parts of the grammar that are not yet covered,
+such as disjunctions and some aggregates.
+
+### Disclaimer
+
+This project is quite experimental and may change at any time.
+Though I hope it should be fairly stable soon.
