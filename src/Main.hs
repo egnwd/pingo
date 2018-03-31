@@ -24,5 +24,5 @@ main = runCommand
     input <- getContents
     case parse clingoOut input of
       Left err -> hPrint stderr err
-      Right as -> mapM_ (output $ optColor opts) $ zip [1..] as
+      Right as -> mapM_ (output $ optColor opts) as
   )

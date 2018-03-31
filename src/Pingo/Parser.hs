@@ -2,6 +2,8 @@
 
 module Pingo.Parser where
 
+import Data.Set (toList, fromList)
+
 import Pingo.AST
 import Pingo.Parser.Utils
 import Pingo.Parser.ASP
@@ -19,18 +21,23 @@ statements = many (stmtASP <|> stmtILASP)
 file :: Parser Program
 file = whiteSpace *> (Program <$> statements) <* eof
 
+optimisation :: Parser Optimisation
+optimisation = string "Optimization: " *> many1 decimal
+
 -- | The 'answerSet' parser matches a list of 'Atom's
-answerSet :: Parser [Atom]
+answerSet :: Parser AnswerSet
 answerSet = do
-  string "Answer: " *> decimal <* newline
-  many1 (atom <?> "a predicate or atom")
+  n <- string "Answer: " *> decimal <* newline
+  as <- many1 (atom <?> "a predicate or atom")
+  o <- optionMaybe (optimisation <* newline)
+  return $ AnswerSet as n o
 
 -- | The 'answerSets' parser collects a list of 'AnswerSet's
-answerSets :: Parser [[Atom]]
-answerSets = many1 (answerSet <?> "an answer set")
+answerSets :: Parser [AnswerSet]
+answerSets = (toList . fromList) <$> many1 (answerSet <?> "an answer set")
 
 -- | This 'file' parser returns the parsed 'Program'
-clingoOut :: Parser [[Atom]]
+clingoOut :: Parser [AnswerSet]
 clingoOut = try (anyTill (string "Answer: ")) *> answerSets
   <|> anyTill (string "UNSATISFIABLE") *> fail "No Answer Sets found"
 

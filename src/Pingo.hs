@@ -34,6 +34,8 @@ The printing can be colored or plain.
 
 module Pingo (
   parse,
+  AnswerSet,
+  Optimisation,
   Atom,
   Term,
   Ident,

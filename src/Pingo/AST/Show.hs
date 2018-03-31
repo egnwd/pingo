@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+
 module Pingo.AST.Show where
 
 import Pingo.AST.Types
@@ -92,3 +94,9 @@ blankId id = id ++ ", "
 instance Show Program where
   show (Program ss) = intercalate "\n" $ map show ss
 
+instance Show AnswerSet where
+  show (AnswerSet as n o) = "Answer " ++ show n ++ ":" ++ maybe "" show o ++ "\n"
+    ++ intercalate "\n" (map (("\t" ++) . show) as)
+
+instance {-# OVERLAPPING #-} Show Optimisation where
+  show = (" " ++) . unwords . map show

@@ -72,3 +72,11 @@ data AOp = Add
          | Divide
          deriving (Eq)
 
+data AnswerSet = AnswerSet [Atom] Int (Maybe Optimisation)
+type Optimisation = [Int]
+
+instance Eq AnswerSet where
+  (AnswerSet _ a _) == (AnswerSet _ b _) = a == b
+
+instance Ord AnswerSet where
+  compare (AnswerSet _ a _) (AnswerSet _ b _) = compare a b
